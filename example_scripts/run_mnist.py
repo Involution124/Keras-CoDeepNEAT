@@ -14,8 +14,9 @@ from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
 from keras import regularizers
+from importlib.machinery import SourceFileLoader
 
-kerascodeepneat = imp.load_source("kerascodeepneat", "./base/kerascodeepneat.py")
+kerascodeepneat = SourceFileLoader("kerascodeepneat", "/Keras-CoDeepNEAT/base/kerascodeepneat.py").load_module()
 
 def run_mnist_full(generations, training_epochs, population_size, blueprint_population_size, module_population_size, n_blueprint_species, n_module_species, final_model_training_epochs):
     from keras.datasets import mnist

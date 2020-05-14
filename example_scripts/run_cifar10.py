@@ -16,8 +16,9 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
 from keras import regularizers
 import imp
+from importlib.machinery import SourceFileLoader
 
-kerascodeepneat = imp.load_source("kerascodeepneat", "./base/kerascodeepneat.py")
+kerascodeepneat = SourceFileLoader("kerascodeepneat", "/Keras-CoDeepNEAT/base/kerascodeepneat.py").load_module()
 
 def run_cifar10_full(generations, training_epochs, population_size, blueprint_population_size, module_population_size, n_blueprint_species, n_module_species, final_model_training_epochs):
     from keras.datasets import cifar10
@@ -101,7 +102,7 @@ def run_cifar10_full(generations, training_epochs, population_size, blueprint_po
     compiler = {"loss":"categorical_crossentropy", "optimizer":"keras.optimizers.Adam(lr=0.005)", "metrics":["accuracy"]}
 
     # Set configurations for full training session (final training)
-    es = EarlyStopping(monitor='val_acc', mode='auto', verbose=1, patience=15)
+    # es = EarlyStopping(monitor='val_acc', mode='auto', verbose=1, patience=15)
     mc = ModelCheckpoint('best_model_checkpoint.h5', monitor='val_accuracy', mode='auto', verbose=1, save_best_only=True)
     csv_logger = CSVLogger('training.csv')
     custom_fit_args = {"generator": datagen.flow(x_train, y_train, batch_size=batch_size),
@@ -109,7 +110,7 @@ def run_cifar10_full(generations, training_epochs, population_size, blueprint_po
     "epochs": training_epochs,
     "verbose": 1,
     "validation_data": (x_test,y_test),
-    "callbacks": [es, csv_logger]
+    "callbacks": [ csv_logger]
     }                        
     improved_dataset = kerascodeepneat.Datasets(training=[x_train, y_train], test=[x_test, y_test])
     improved_dataset.custom_fit_args = custom_fit_args
