@@ -950,7 +950,7 @@ class Population:
 
         logging.info(f"Iterating fitness over {len(self.individuals)} individuals")
         iteration = []
-
+        print("Entering the - iterate fitness function");
         #(batch, channels, rows, cols)
         # Please murder me for this part I deserve it (random.sample doesn't work aaaah!!!)
         i = random.randint(0,59999-self.datasets.SAMPLE_SIZE)
@@ -974,6 +974,7 @@ class Population:
                               (None if individual.blueprint.species == None else individual.blueprint.species.name),
                               current_generation])
 
+        print("Leaving the - iterate fitness function");
         return iteration
 
     def iterate_generations(self, generations=1, training_epochs=1, validation_split=0.15, mutation_rate=0.5, crossover_rate=0.2, elitism_rate=0.1, possible_components=None, possible_complementary_components=None):
@@ -1082,11 +1083,13 @@ class Population:
         individual.model.save(f"{basepath}/models/full_model_indiv{individual.name}_blueprint{individual.blueprint.mark}.h5")
 
         with open(f'{basepath}training.json', 'w', encoding='utf-8') as f:
-            json.dump(history.history, f, ensure_ascii=False, indent=4)
+            json.dump(str(history.history), f, ensure_ascii=False, indent=4)
 
         # summarize history for accuracy
-        plt.plot(history.history['acc'])
-        plt.plot(history.history['val_acc'])
+        if('acc' in history.history.keys()):
+            plt.plot(history.history['acc'])
+        if('val_acc' in history.history.keys()):
+            plt.plot(history.history['val_acc'])
         plt.title('model accuracy')
         plt.ylabel('accuracy')
         plt.xlabel('epoch')
