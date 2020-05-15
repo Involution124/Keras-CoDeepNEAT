@@ -13,7 +13,16 @@ from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
 from keras import regularizers
 
+import json
+import tarfile
+
 basepath = "./"     #"/dbfs/FileStore/"
+
+kafka_host = os.getenv('KAFKA_HOST_NAME')
+if(kafka_host == None):
+        print("Failed, no KAFKA_HOST_NAME environment variable was set")
+            sys.exit(1)
+
 
 class HistoricalMarker:
     
@@ -417,7 +426,7 @@ class Individual:
         except:
             plot_model(self.model, to_file=f'{basepath}/images/gen{generation}_blueprint_{self.blueprint.mark}_layer_level_graph.png', show_shapes=True, show_layer_names=True)
 
-    def fit(self, input_x, input_y, training_epochs=1, validation_split=0.15, current_generation="", custom_fit_args=None):
+    def fit(self, input_x, input_y, index, training_epochs=1, validation_split=0.15, current_generation="", custom_fit_args=None):
         """
         Fits the keras model representing the topology.
         """
@@ -425,9 +434,24 @@ class Individual:
         logging.info(f"Fitting one individual for {training_epochs} epochs")
         self.generate(generation=current_generation)
         if custom_fit_args is not None:
-            fitness = self.model.fit_generator(**custom_fit_args)
+            print("Error, this version of keras incompatible with custom fit args");
+            exit(0);
+            #fitness = self.model.fit_generator(**custom_fit_args)
         else:
-            fitness = self.model.fit(input_x, input_y, epochs=training_epochs, validation_split=validation_split, batch_size=128)
+            f = open("metadata", "w")
+            f.write(json.dumps({"index": index, "training_epochs": training_epochs, "validation_split":validation_split});
+            f.close()
+            self.model.save("tofit_model.h5");
+            x_input.tofile("input_x");
+            y_input.tofile("input_y");
+            with tarfile.open("archive.tar", "w") as tar:
+                    for name in ["tofit_model.h5", "input_x", "input_y", "metadata"]:
+                                tar.add(name)
+            
+
+
+
+            #fitness = self.model.fit(input_x, input_y, epochs=training_epochs, validation_split=validation_split, batch_size=128)
 
         logging.info(f"Fitness for individual {self.name} using blueprint {self.blueprint.mark} after {training_epochs} epochs: {fitness.history}")
 
@@ -960,19 +984,30 @@ class Population:
         test_x = self.datasets.test[0][j:j+self.datasets.TEST_SAMPLE_SIZE]
         test_y = self.datasets.test[1][j:j+self.datasets.TEST_SAMPLE_SIZE]
 
-        for individual in self.individuals:
+         for individual_num in range(len(self.individuals)):
+            individual = self.individuals[individual_num];
             if (self.datasets.custom_fit_args is not None):
-                history = individual.fit(input_x, input_y, training_epochs, validation_split, current_generation=current_generation, custom_fit_args=self.datasets.custom_fit_args)
+                individual.fit(input_x, input_y, individual_num, training_epochs, validation_split, current_generation=current_generation, custom_fit_args=self.datasets.custom_fit_args)
             else:
-                history = individual.fit(input_x, input_y, training_epochs, validation_split, current_generation=current_generation)
-            score = individual.score(test_x, test_y)
+                individual.fit(input_x, input_y, training_epochs, validation_split, current_generation=current_generation)
 
-            iteration.append([individual.name,
-                              individual.blueprint.mark,
-                              score,
-                              individual.blueprint.get_kmeans_representation(),
-                              (None if individual.blueprint.species == None else individual.blueprint.species.name),
-                              current_generation])
+        numIterations = 0;
+        consume = KafkaConsumer("models-fitted", group_id="trainer",  request_timeout_ms=120000,session_timeout_ms=100000, bootstrap_servers=kafka_host)
+        while(True):
+            if(numIterations >= len(self.individuals)):
+                    break;
+            for message in consumer: 
+                print("Received inbound from Kafka");
+                index = message.key();
+                print("Index = " + str(index));
+                score = message.value();
+                print("score = " + str(score));
+                numIterations++;
+                iteration.append([individuals[index].name,
+                                  individuals[index].blueprint.mark,
+                                  score,
+                                  individuals[index].blueprint.get_kmeans_representation(),
+                                  (None if individuals[index].blueprint.species == None else individuals[index].blueprint.species.name),current_generation])
 
         print("Leaving the - iterate fitness function");
         return iteration
