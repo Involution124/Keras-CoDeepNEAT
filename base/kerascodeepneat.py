@@ -438,9 +438,9 @@ class Individual:
             exit(0);
             #fitness = self.model.fit_generator(**custom_fit_args)
         else:
-           with open("metadata", "w") as f:
+            with open("metadata", "w") as f:
                 f.write(json.dumps({"index": index, "training_epochs": training_epochs, "validation_split": validation_split}))
-            self.model.save("tofit_model.h5");
+            self.model.save("tofit_model.h5")
             input_x.tofile("input_x");
             input_y.tofile("input_y");
             with tarfile.open("archive.tar", "w") as tar:
