@@ -440,7 +440,7 @@ class Individual:
         else:
             with open("metadata", "w") as f:
                 f.write(json.dumps({"index": index, "training_epochs": training_epochs, "validation_split": validation_split}))
-            self.model.save("tofit_model.h5")
+            self.model.save("model.h5")
             input_x.tofile("input_x");
             input_y.tofile("input_y");
             with tarfile.open("archive.tar", "w") as tar:
@@ -449,14 +449,17 @@ class Individual:
             
             producer = KafkaProducer(bootstrap_servers=kafka_host, max_request_size=2000000000, buffer_memory=103554432)
 
+            logging.info("Going to send the data over kafka")
+
             with open("archive.tar", "rb") as image:
                 f = image.read()
                 b = bytearray(f) 
-                print("Constructed byte array of tarfile");
+                logging.info("Constructed byte array of tarfile");
                 response = producer.send('models-to-fit', b)
                 result = response.get(timeout=30)
-                print("Result = " + str(result))
+                logging.info("Result = " + str(result))
 
+            logging.info("Send data over kafka")
 
             #fitness = self.model.fit(input_x, input_y, epochs=training_epochs, validation_split=validation_split, batch_size=128)
 
