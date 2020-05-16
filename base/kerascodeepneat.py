@@ -12,6 +12,7 @@ from keras import backend as K
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
 from keras import regularizers
+from kafka import KafkaConsumer, KafkaProducer
 
 import json
 import tarfile
@@ -437,9 +438,8 @@ class Individual:
             exit(0);
             #fitness = self.model.fit_generator(**custom_fit_args)
         else:
-            f = open("metadata", "w")
-            f.write(json.dumps({"index": index, "training_epochs": training_epochs, "validation_split":validation_split}));
-            f.close()
+           with open("metadata", "w") as f:
+                f.write(json.dumps({"index": index, "training_epochs": training_epochs, "validation_split": validation_split}))
             self.model.save("tofit_model.h5");
             input_x.tofile("input_x");
             input_y.tofile("input_y");
@@ -460,9 +460,9 @@ class Individual:
 
             #fitness = self.model.fit(input_x, input_y, epochs=training_epochs, validation_split=validation_split, batch_size=128)
 
-        logging.info(f"Fitness for individual {self.name} using blueprint {self.blueprint.mark} after {training_epochs} epochs: {fitness.history}")
+        #logging.info(f"Fitness for individual {self.name} using blueprint {self.blueprint.mark} after {training_epochs} epochs: {fitness.history}")
 
-        return fitness
+        #return fitness
 
     def score(self, test_x, test_y):
         """
@@ -990,7 +990,9 @@ class Population:
         input_y = self.datasets.training[1][i:i+self.datasets.SAMPLE_SIZE]
         test_x = self.datasets.test[0][j:j+self.datasets.TEST_SAMPLE_SIZE]
         test_y = self.datasets.test[1][j:j+self.datasets.TEST_SAMPLE_SIZE]
+        
         print("Fitting the individuals");
+
         for individual_num in range(len(self.individuals)):
             individual = self.individuals[individual_num];
             if (self.datasets.custom_fit_args is not None):
@@ -999,7 +1001,7 @@ class Population:
                 individual.fit(input_x, input_y, training_epochs, validation_split, current_generation=current_generation)
         print("Receiving models back from kafka");
         numIterations = 0;
-        consume = KafkaConsumer("models-fitted", group_id="trainer",  request_timeout_ms=120000,session_timeout_ms=100000, bootstrap_servers=kafka_host)
+        consumer = KafkaConsumer("models-fitted", group_id="trainer",  request_timeout_ms=120000,session_timeout_ms=100000, bootstrap_servers=kafka_host)
         while(True):
             if(numIterations >= len(self.individuals)):
                     break;
@@ -1009,12 +1011,13 @@ class Population:
                 print("Index = " + str(index));
                 score = message.value();
                 print("score = " + str(score));
-                numIterations+=1;
-                iteration.append([individuals[index].name,
-                                  individuals[index].blueprint.mark,
+                numIterations+=1
+                iteration.append([self.individuals[index].name,
+                                  self.individuals[index].blueprint.mark,
                                   score,
-                                  individuals[index].blueprint.get_kmeans_representation(),
-                                  (None if individuals[index].blueprint.species == None else individuals[index].blueprint.species.name),current_generation])
+                                  self.individuals[index].blueprint.get_kmeans_representation(),
+                                  (None if self.individuals[index].blueprint.species == None else self.individuals[index].blueprint.species.name),
+                                  current_generation])
 
         print("Leaving the - iterate fitness function");
         return iteration
