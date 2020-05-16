@@ -449,7 +449,7 @@ class Individual:
             
             producer = KafkaProducer(bootstrap_servers=kafka_host)
 
-            with open("P2E_S5_C1.1/" + filename, "rb") as image:
+            with open("P2E_S5_C1.1/archive.tar", "rb") as image:
                 f = image.read()
                 b = bytearray(f) 
                 print("Constructed byte array of tarfile");
