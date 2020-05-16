@@ -15,14 +15,13 @@ from keras import regularizers
 
 import json
 import tarfile
+import sys
 
 basepath = "./"     #"/dbfs/FileStore/"
 
 kafka_host = os.getenv('KAFKA_HOST_NAME')
 if(kafka_host == None):
-        print("Failed, no KAFKA_HOST_NAME environment variable was set")
-            sys.exit(1)
-
+    kafka_host = "kafka-service-train";
 
 class HistoricalMarker:
     
@@ -439,16 +438,24 @@ class Individual:
             #fitness = self.model.fit_generator(**custom_fit_args)
         else:
             f = open("metadata", "w")
-            f.write(json.dumps({"index": index, "training_epochs": training_epochs, "validation_split":validation_split});
+            f.write(json.dumps({"index": index, "training_epochs": training_epochs, "validation_split":validation_split}));
             f.close()
             self.model.save("tofit_model.h5");
-            x_input.tofile("input_x");
-            y_input.tofile("input_y");
+            input_x.tofile("input_x");
+            input_y.tofile("input_y");
             with tarfile.open("archive.tar", "w") as tar:
                     for name in ["tofit_model.h5", "input_x", "input_y", "metadata"]:
                                 tar.add(name)
             
+            producer = KafkaProducer(bootstrap_servers=kafka_host)
 
+            with open("P2E_S5_C1.1/" + filename, "rb") as image:
+                f = image.read()
+                b = bytearray(f) 
+                print("Constructed byte array of tarfile");
+                response = producer.send('models-to-fit', b)
+                result = response.get(timeout=30)
+                print("Result = " + str(result))
 
 
             #fitness = self.model.fit(input_x, input_y, epochs=training_epochs, validation_split=validation_split, batch_size=128)
@@ -983,14 +990,14 @@ class Population:
         input_y = self.datasets.training[1][i:i+self.datasets.SAMPLE_SIZE]
         test_x = self.datasets.test[0][j:j+self.datasets.TEST_SAMPLE_SIZE]
         test_y = self.datasets.test[1][j:j+self.datasets.TEST_SAMPLE_SIZE]
-
-         for individual_num in range(len(self.individuals)):
+        print("Fitting the individuals");
+        for individual_num in range(len(self.individuals)):
             individual = self.individuals[individual_num];
             if (self.datasets.custom_fit_args is not None):
                 individual.fit(input_x, input_y, individual_num, training_epochs, validation_split, current_generation=current_generation, custom_fit_args=self.datasets.custom_fit_args)
             else:
                 individual.fit(input_x, input_y, training_epochs, validation_split, current_generation=current_generation)
-
+        print("Receiving models back from kafka");
         numIterations = 0;
         consume = KafkaConsumer("models-fitted", group_id="trainer",  request_timeout_ms=120000,session_timeout_ms=100000, bootstrap_servers=kafka_host)
         while(True):
@@ -1002,7 +1009,7 @@ class Population:
                 print("Index = " + str(index));
                 score = message.value();
                 print("score = " + str(score));
-                numIterations++;
+                numIterations+=1;
                 iteration.append([individuals[index].name,
                                   individuals[index].blueprint.mark,
                                   score,
