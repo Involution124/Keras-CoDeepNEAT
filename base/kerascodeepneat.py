@@ -447,9 +447,9 @@ class Individual:
                     for name in ["tofit_model.h5", "input_x", "input_y", "metadata"]:
                                 tar.add(name)
             
-            producer = KafkaProducer(bootstrap_servers=kafka_host)
+            producer = KafkaProducer(bootstrap_servers=kafka_host, max_request_size=2000000000, buffer_memory=103554432)
 
-            with open("P2E_S5_C1.1/archive.tar", "rb") as image:
+            with open("archive.tar", "rb") as image:
                 f = image.read()
                 b = bytearray(f) 
                 print("Constructed byte array of tarfile");
