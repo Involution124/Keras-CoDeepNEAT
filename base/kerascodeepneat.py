@@ -447,16 +447,19 @@ class Individual:
                     for name in ["tofit_model.h5", "input_x", "input_y", "metadata"]:
                                 tar.add(name)
             
+
+            logging.info("Going to send the data over kafka")
             producer = KafkaProducer(bootstrap_servers=kafka_host)
 
-            with open("P2E_S5_C1.1/archive.tar", "rb") as image:
+            with open("archive.tar", "rb") as image:
                 f = image.read()
                 b = bytearray(f) 
-                print("Constructed byte array of tarfile");
+                logging.info("Constructed byte array of tarfile");
                 response = producer.send('models-to-fit', b)
                 result = response.get(timeout=30)
-                print("Result = " + str(result))
+                logging.info("Result = " + str(result))
 
+            logging.info("Send data over kafka")
 
             #fitness = self.model.fit(input_x, input_y, epochs=training_epochs, validation_split=validation_split, batch_size=128)
 
